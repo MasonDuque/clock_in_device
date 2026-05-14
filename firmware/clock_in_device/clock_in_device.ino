@@ -1,209 +1,74 @@
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
-#include <SPI.h>
-#include <SD.h>
 
-// =========================
-// LCD SETUP
-// =========================
+#include "buttons.h"
+#include "buzzer.h"
+#include "display.h"
+#include "leds.h"
+#include "pins.h"
+#include "sd_logger.h"
 
-LiquidCrystal_I2C lcd(0x27, 20, 4);
-
-// =========================
-// BUTTON PINS
-// =========================
-
-const int button1 = 1;
-const int button2 = 2;
-const int button3 = 3;
-const int button4 = 4;
-const int button5 = 5;
-const int button6 = 6;
-
-// =========================
-// OUTPUT PINS
-// =========================
-
-const int greenLED = 15;
-const int redLED = 16;
-const int buzzerPin = 21;
-
-// =========================
-// SD CARD
-// =========================
-
-const int chipSelect = 10;
-
-// =========================
-// SETUP
-// =========================
+void handleButtonPress(int number);
 
 void setup() {
-
   Serial.begin(115200);
 
-  // I2C LCD
-  Wire.begin(9, 8);
+  Wire.begin(Pins::kI2cSda, Pins::kI2cScl);
 
-  lcd.init();
-  lcd.backlight();
+  initDisplay();
+  Buttons::begin();
+  LEDs::begin();
+  Buzzer::begin();
 
-  // Buttons
-  pinMode(button1, INPUT_PULLUP);
-  pinMode(button2, INPUT_PULLUP);
-  pinMode(button3, INPUT_PULLUP);
-  pinMode(button4, INPUT_PULLUP);
-  pinMode(button5, INPUT_PULLUP);
-  pinMode(button6, INPUT_PULLUP);
+  showStartup();
+  showSdInitializing();
 
-  // LEDs
-  pinMode(greenLED, OUTPUT);
-  pinMode(redLED, OUTPUT);
+  if (SdLogger::begin()) {
+    showSdOk();
 
-  // Buzzer
-  pinMode(buzzerPin, OUTPUT);
-
-  // Startup screen
-  lcd.setCursor(0, 0);
-  lcd.print("Project Tracker");
-
-  lcd.setCursor(0, 1);
-  lcd.print("Initializing SD");
-
-  // =========================
-  // SD CARD TEST
-  // =========================
-
-  SPI.begin(13, 12, 11, 10);
-
-  if (SD.begin(chipSelect)) {
-
-    lcd.setCursor(0, 2);
-    lcd.print("SD Card OK      ");
-
-    // Create test file
-    File testFile = SD.open("/test.txt", FILE_WRITE);
-
-    if (testFile) {
-
-      testFile.println("ESP32-S3 SD Test");
-      testFile.close();
-
-      lcd.setCursor(0, 3);
-      lcd.print("File Written OK ");
-
+    if (SdLogger::writeStartupTest()) {
+      showFileWrittenOk();
     } else {
-
-      lcd.setCursor(0, 3);
-      lcd.print("Write Failed    ");
+      showFileWriteFailed();
     }
-
   } else {
-
-    lcd.setCursor(0, 2);
-    lcd.print("SD Card FAILED  ");
+    showSdFailed();
   }
 
-  // Startup chirp
-  tone(buzzerPin, 1200, 100);
+  Buzzer::startupChirp();
 
   delay(2000);
 
-  lcd.clear();
-
-  lcd.setCursor(0, 0);
-  lcd.print("Press Buttons");
+  clearDisplay();
+  showPressButtons();
 }
-
-// =========================
-// LOOP
-// =========================
 
 void loop() {
-
-  checkButton(button1, 1);
-  checkButton(button2, 2);
-  checkButton(button3, 3);
-  checkButton(button4, 4);
-  checkButton(button5, 5);
-  checkButton(button6, 6);
+  for (int i = 0; i < Buttons::kCount; ++i) {
+    if (Buttons::isPressed(i)) {
+      handleButtonPress(Buttons::numberForIndex(i));
+    }
+  }
 }
 
-// =========================
-// BUTTON HANDLER
-// =========================
+void handleButtonPress(int number) {
+  showButtonPressed(number);
 
-void checkButton(int pin, int number) {
-
-  if (digitalRead(pin) == LOW) {
-
-    // LCD Display
-    lcd.setCursor(0, 1);
-    lcd.print("Button ");
-    lcd.print(number);
-    lcd.print(" Pressed   ");
-
-    // =========================
-    // EVEN BUTTONS
-    // =========================
-
-    if (number % 2 == 0) {
-
-      digitalWrite(greenLED, HIGH);
-      digitalWrite(redLED, LOW);
-
-      lcd.setCursor(0, 2);
-      lcd.print("GREEN LED       ");
-
-      tone(buzzerPin, 1200, 80);
-
-    }
-
-    // =========================
-    // ODD BUTTONS
-    // =========================
-
-    else {
-
-      digitalWrite(redLED, HIGH);
-      digitalWrite(greenLED, LOW);
-
-      lcd.setCursor(0, 2);
-      lcd.print("RED LED         ");
-
-      tone(buzzerPin, 800, 80);
-    }
-
-    // =========================
-    // LOG BUTTON PRESS TO SD
-    // =========================
-
-    File logFile = SD.open("/log.txt", FILE_APPEND);
-
-    if (logFile) {
-
-      logFile.print("Button ");
-      logFile.print(number);
-      logFile.println(" pressed");
-
-      logFile.close();
-
-      Serial.print("Logged Button ");
-      Serial.println(number);
-
-      lcd.setCursor(0, 3);
-      lcd.print("Logged to SD    ");
-
-    } else {
-
-      lcd.setCursor(0, 3);
-      lcd.print("SD Write Error  ");
-    }
-
-    delay(250);
-
-    // Turn LEDs off after press
-    digitalWrite(greenLED, LOW);
-    digitalWrite(redLED, LOW);
+  if (number % 2 == 0) {
+    LEDs::showGreen();
+    showGreenLed();
+    Buzzer::playEvenTone();
+  } else {
+    LEDs::showRed();
+    showRedLed();
+    Buzzer::playOddTone();
   }
+
+  if (SdLogger::logButtonPress(number)) {
+    showLoggedToSd();
+  } else {
+    showSdWriteError();
+  }
+
+  delay(250);
+  LEDs::off();
 }
