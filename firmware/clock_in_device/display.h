@@ -1,6 +1,8 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
+#include "state_machine.h"
+
 void initDisplay();
 void showStartup();
 void showSdInitializing();
@@ -14,6 +16,7 @@ void showGreenLed();
 void showRedLed();
 void showLoggedToSd();
 void showSdWriteError();
+void showCurrentState(DeviceState state);
 void clearDisplay();
 
 #endif

@@ -6,6 +6,7 @@
 #include "leds.h"
 #include "pins.h"
 #include "sd_logger.h"
+#include "state_machine.h"
 
 void handleButtonPress(int number);
 
@@ -18,6 +19,8 @@ void setup() {
   Buttons::begin();
   LEDs::begin();
   Buzzer::begin();
+
+  initStateMachine();
 
   showStartup();
   showSdInitializing();
@@ -40,6 +43,7 @@ void setup() {
 
   clearDisplay();
   showPressButtons();
+  showCurrentState(getState());
 }
 
 void loop() {
@@ -51,6 +55,17 @@ void loop() {
 }
 
 void handleButtonPress(int number) {
+  if (number == 1) {
+    setState(DeviceState::CLOCKED_IN);
+  } else if (number == 2) {
+    setState(DeviceState::IDLE);
+  } else if (number == 3) {
+    setState(DeviceState::MENU);
+  } else if (number == 4) {
+    setState(DeviceState::IDLE);
+  }
+
+  showCurrentState(getState());
   showButtonPressed(number);
 
   if (number % 2 == 0) {
