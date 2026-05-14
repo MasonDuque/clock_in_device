@@ -2,6 +2,8 @@
 
 #include <LiquidCrystal_I2C.h>
 
+#include "state_machine.h"
+
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 void initDisplay() {
@@ -42,6 +44,14 @@ void showFileWriteFailed() {
 void showPressButtons() {
   lcd.setCursor(0, 0);
   lcd.print("Press Buttons");
+}
+
+
+void showCurrentState(DeviceState state) {
+  lcd.setCursor(0, 0);
+  lcd.print("State: ");
+  lcd.print(stateToString(state));
+  lcd.print("            ");
 }
 
 void showButtonPressed(int number) {
