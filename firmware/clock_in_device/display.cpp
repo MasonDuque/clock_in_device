@@ -8,7 +8,9 @@ namespace {
 AppState::Screen gLastScreen = static_cast<AppState::Screen>(-1);
 int gLastMenuIndex = -1;
 int gLastProjectListSelected = -1;
+int gLastProjectListWindowStart = -1;
 int gLastDeleteListSelected = -1;
+int gLastDeleteListWindowStart = -1;
 int gLastPendingDeleteIndex = -1;
 const char* gLastDeletedName = nullptr;
 int gLastDetailProjectIndex = -1;
@@ -76,31 +78,63 @@ void showMainMenu() {
 
 void showProjectList() {
   const int selected = AppState::selectedProjectIndex();
-  if (gLastScreen != AppState::Screen::PROJECT_LIST ||
-      gLastProjectListSelected != selected) {
-    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
-  }
-
+  const int projectCount = AppState::projectCount();
   const AppState::Project* projects = AppState::projects();
-  if (AppState::projectCount() == 0) {
+  if (projectCount == 0) {
     clearRow(0); clearRow(1); clearRow(2); clearRow(3);
     printCentered(1, "No Projects");
     printCentered(3, "BACK=Menu");
     gLastProjectListSelected = selected;
+    gLastProjectListWindowStart = 0;
     return;
   }
-  if (gLastScreen != AppState::Screen::PROJECT_LIST ||
-      gLastProjectListSelected != selected) {
-    for (int row = 0; row < AppState::projectCount() && row < 4; ++row) {
-      String left = String(projects[row].name);
-      String right = formatCompact(projects[row].savedSeconds);
+
+  const int visibleRows = min(projectCount, 4);
+  int windowStart = selected - (visibleRows - 1);
+  if (windowStart < 0) windowStart = 0;
+  const int maxWindowStart = projectCount - visibleRows;
+  if (windowStart > maxWindowStart) windowStart = maxWindowStart;
+
+  const bool firstDraw = gLastScreen != AppState::Screen::PROJECT_LIST;
+  const bool windowChanged = gLastProjectListWindowStart != windowStart;
+
+  if (firstDraw || windowChanged) {
+    for (int row = 0; row < visibleRows; ++row) {
+      String left = String(projects[windowStart + row].name);
+      String right = formatCompact(projects[windowStart + row].savedSeconds);
       char line[21];
-      snprintf(line, sizeof(line), "%c%-9s%10s", row == selected ? '>' : ' ', left.c_str(), right.c_str());
+      snprintf(line, sizeof(line), "%c%-9s%10s",
+               (windowStart + row) == selected ? '>' : ' ', left.c_str(),
+               right.c_str());
       lcd.setCursor(0, row);
       lcd.print(line);
     }
-    gLastProjectListSelected = selected;
+    for (int row = visibleRows; row < 4; ++row) {
+      clearRow(row);
+    }
+  } else if (gLastProjectListSelected != selected) {
+    const int previousRow = gLastProjectListSelected - windowStart;
+    const int currentRow = selected - windowStart;
+    if (previousRow >= 0 && previousRow < visibleRows) {
+      String left = String(projects[gLastProjectListSelected].name);
+      String right = formatCompact(projects[gLastProjectListSelected].savedSeconds);
+      char line[21];
+      snprintf(line, sizeof(line), " %-9s%10s", left.c_str(), right.c_str());
+      lcd.setCursor(0, previousRow);
+      lcd.print(line);
+    }
+    if (currentRow >= 0 && currentRow < visibleRows) {
+      String left = String(projects[selected].name);
+      String right = formatCompact(projects[selected].savedSeconds);
+      char line[21];
+      snprintf(line, sizeof(line), ">%-9s%10s", left.c_str(), right.c_str());
+      lcd.setCursor(0, currentRow);
+      lcd.print(line);
+    }
   }
+
+  gLastProjectListSelected = selected;
+  gLastProjectListWindowStart = windowStart;
 }
 
 void showProjectDetail() {
@@ -140,24 +174,67 @@ void showProjectDetail() {
 
 void showDeleteProjectList() {
   const int selected = AppState::selectedDeleteProjectIndex();
-  if (gLastScreen != AppState::Screen::DELETE_PROJECT_LIST ||
-      gLastDeleteListSelected != selected) {
-    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+  const int projectCount = AppState::projectCount();
+  if (projectCount == 0) {
+    clearRow(1); clearRow(2); clearRow(3);
+    gLastDeleteListSelected = selected;
+    gLastDeleteListWindowStart = 0;
+    return;
+  }
+
+  const int visibleRows = min(projectCount, 3);
+  int windowStart = selected - (visibleRows - 1);
+  if (windowStart < 0) windowStart = 0;
+  const int maxWindowStart = projectCount - visibleRows;
+  if (windowStart > maxWindowStart) windowStart = maxWindowStart;
+
+  const bool firstDraw = gLastScreen != AppState::Screen::DELETE_PROJECT_LIST;
+  const bool windowChanged = gLastDeleteListWindowStart != windowStart;
+  const AppState::Project* projects = AppState::projects();
+
+  if (firstDraw) {
+    clearRow(0);
     lcd.setCursor(0, 0);
     lcd.print("Delete Project");
-    const AppState::Project* projects = AppState::projects();
-    const int visibleRows = min(AppState::projectCount(), 3);
+  }
+
+  if (firstDraw || windowChanged) {
     for (int row = 0; row < visibleRows; ++row) {
-      String left = String(projects[row].name);
-      String right = formatCompact(projects[row].savedSeconds);
+      String left = String(projects[windowStart + row].name);
+      String right = formatCompact(projects[windowStart + row].savedSeconds);
       char line[21];
-      snprintf(line, sizeof(line), "%c%-9s%10s", row == selected ? '>' : ' ',
+      snprintf(line, sizeof(line), "%c%-9s%10s",
+               (windowStart + row) == selected ? '>' : ' ',
                left.c_str(), right.c_str());
       lcd.setCursor(0, row + 1);
       lcd.print(line);
     }
-    gLastDeleteListSelected = selected;
+    for (int row = visibleRows; row < 3; ++row) {
+      clearRow(row + 1);
+    }
+  } else if (gLastDeleteListSelected != selected) {
+    const int previousRow = gLastDeleteListSelected - windowStart;
+    const int currentRow = selected - windowStart;
+    if (previousRow >= 0 && previousRow < visibleRows) {
+      String left = String(projects[gLastDeleteListSelected].name);
+      String right = formatCompact(projects[gLastDeleteListSelected].savedSeconds);
+      char line[21];
+      snprintf(line, sizeof(line), " %-9s%10s", left.c_str(), right.c_str());
+      lcd.setCursor(0, previousRow + 1);
+      lcd.print(line);
+    }
+    if (currentRow >= 0 && currentRow < visibleRows) {
+      String left = String(projects[selected].name);
+      String right = formatCompact(projects[selected].savedSeconds);
+      char line[21];
+      snprintf(line, sizeof(line), ">%-9s%10s", left.c_str(), right.c_str());
+      lcd.setCursor(0, currentRow + 1);
+      lcd.print(line);
+    }
   }
+
+  gLastDeleteListSelected = selected;
+  gLastDeleteListWindowStart = windowStart;
 }
 
 void showDeleteProjectConfirm() {
