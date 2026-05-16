@@ -9,6 +9,8 @@ AppState::Screen gLastScreen = static_cast<AppState::Screen>(-1);
 int gLastMenuIndex = -1;
 int gLastProjectListSelected = -1;
 int gLastDeleteListSelected = -1;
+int gLastPendingDeleteIndex = -1;
+const char* gLastDeletedName = nullptr;
 int gLastDetailProjectIndex = -1;
 AppState::ClockState gLastDetailClockState = static_cast<AppState::ClockState>(-1);
 uint32_t gLastDetailSeconds = UINT32_MAX;
@@ -159,29 +161,39 @@ void showDeleteProjectList() {
 }
 
 void showDeleteProjectConfirm() {
-  clearRow(0); clearRow(1); clearRow(2); clearRow(3);
-  lcd.setCursor(0, 0);
-  lcd.print("Delete Project?");
   const int pendingIdx = AppState::pendingDeleteProjectIndex();
-  if (pendingIdx >= 0 && pendingIdx < AppState::projectCount()) {
-    printCentered(1, String(AppState::projects()[pendingIdx].name));
+  if (gLastScreen != AppState::Screen::DELETE_PROJECT_CONFIRM ||
+      gLastPendingDeleteIndex != pendingIdx) {
+    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+    lcd.setCursor(0, 0);
+    lcd.print("Delete Project?");
+    if (pendingIdx >= 0 && pendingIdx < AppState::projectCount()) {
+      printCentered(1, String(AppState::projects()[pendingIdx].name));
+    }
+    printCentered(3, "OK=Yes BACK=No");
+    gLastPendingDeleteIndex = pendingIdx;
   }
-  printCentered(3, "OK=Yes BACK=No");
 }
 
 void showDeleteProjectFeedback() {
-  clearRow(0); clearRow(1); clearRow(2); clearRow(3);
-  printCentered(0, "Project Deleted");
   const char* deleted = AppState::lastDeletedProjectName();
-  if (deleted != nullptr) {
-    printCentered(1, String(deleted));
+  if (gLastScreen != AppState::Screen::DELETE_PROJECT_FEEDBACK ||
+      gLastDeletedName != deleted) {
+    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+    printCentered(0, "Project Deleted");
+    if (deleted != nullptr) {
+      printCentered(1, String(deleted));
+    }
+    gLastDeletedName = deleted;
   }
 }
 
 void showDeleteProjectEmpty() {
-  clearRow(0); clearRow(1); clearRow(2); clearRow(3);
-  printCentered(1, "No Projects");
-  printCentered(3, "BACK=Menu");
+  if (gLastScreen != AppState::Screen::DELETE_PROJECT_EMPTY) {
+    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+    printCentered(1, "No Projects");
+    printCentered(3, "BACK=Menu");
+  }
 }
 
 }  // namespace
