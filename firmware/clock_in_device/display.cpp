@@ -398,6 +398,17 @@ void initDisplay() {
 
 void clearDisplay() { lcd.clear(); }
 
+
+void showStartupStatus(const String& line1, const String& line2, const String& line3) {
+  clearRow(0);
+  clearRow(1);
+  clearRow(2);
+  clearRow(3);
+  printCentered(1, line1);
+  if (line2.length() > 0) printCentered(2, line2);
+  if (line3.length() > 0) printCentered(3, line3);
+}
+
 void renderUi() {
   const AppState::Screen screen = AppState::currentScreen();
   if (screen != gLastScreen) {

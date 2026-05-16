@@ -7,6 +7,7 @@
 #include "pins.h"
 #include "sd_logger.h"
 #include "state_machine.h"
+#include "wifi_manager.h"
 
 namespace {
 uint32_t gLastRenderMs = 0;
@@ -26,6 +27,21 @@ void setup() {
 
   SdLogger::begin();
   SdLogger::writeStartupTest();
+
+  showStartupStatus("Connecting WiFi");
+  WiFiManager::begin();
+  const WiFiManager::Result wifiResult = WiFiManager::connectWithTimeout(9000);
+  if (wifiResult.connected) {
+    const String ipAddress = wifiResult.ip.toString();
+    showStartupStatus("WiFi Connected", ipAddress);
+    Serial.print("WiFi IP: ");
+    Serial.println(ipAddress);
+    delay(800);
+  } else {
+    showStartupStatus("WiFi Offline", "Local Mode");
+    Serial.println("WiFi Offline - Local Mode");
+    delay(800);
+  }
 
   AppState::init();
   Buzzer::startupChirp();
