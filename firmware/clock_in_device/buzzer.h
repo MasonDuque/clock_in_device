@@ -4,8 +4,8 @@
 namespace Buzzer {
 void begin();
 void startupChirp();
-void playEvenTone();
-void playOddTone();
+void playClockInTone();
+void playClockOutTone();
 }
 
 #endif

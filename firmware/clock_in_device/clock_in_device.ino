@@ -8,11 +8,12 @@
 #include "sd_logger.h"
 #include "state_machine.h"
 
-void handleButtonPress(int number);
+namespace {
+uint32_t gLastRenderMs = 0;
+}
 
 void setup() {
   Serial.begin(115200);
-
   Wire.begin(Pins::kI2cSda, Pins::kI2cScl);
 
   initDisplay();
@@ -20,70 +21,27 @@ void setup() {
   LEDs::begin();
   Buzzer::begin();
 
-  initStateMachine();
+  SdLogger::begin();
+  SdLogger::writeStartupTest();
 
-  showStartup();
-  showSdInitializing();
-
-  if (SdLogger::begin()) {
-    showSdOk();
-
-    if (SdLogger::writeStartupTest()) {
-      showFileWrittenOk();
-    } else {
-      showFileWriteFailed();
-    }
-  } else {
-    showSdFailed();
-  }
-
+  AppState::init();
   Buzzer::startupChirp();
-
-  delay(2000);
-
-  clearDisplay();
-  showPressButtons();
-  showCurrentState(getState());
+  renderUi();
 }
 
 void loop() {
   for (int i = 0; i < Buttons::kCount; ++i) {
     if (Buttons::isPressed(i)) {
-      handleButtonPress(Buttons::numberForIndex(i));
+      AppState::handleButton(Buttons::numberForIndex(i));
+      SdLogger::logButtonPress(Buttons::numberForIndex(i));
+      delay(170);
+      renderUi();
     }
   }
-}
 
-void handleButtonPress(int number) {
-  if (number == 1) {
-    setState(DeviceState::CLOCKED_IN);
-  } else if (number == 2) {
-    setState(DeviceState::IDLE);
-  } else if (number == 3) {
-    setState(DeviceState::MENU);
-  } else if (number == 4) {
-    setState(DeviceState::IDLE);
+  AppState::update();
+  if (millis() - gLastRenderMs >= 1000) {
+    gLastRenderMs = millis();
+    renderUi();
   }
-
-  showCurrentState(getState());
-  showButtonPressed(number);
-
-  if (number % 2 == 0) {
-    LEDs::showGreen();
-    showGreenLed();
-    Buzzer::playEvenTone();
-  } else {
-    LEDs::showRed();
-    showRedLed();
-    Buzzer::playOddTone();
-  }
-
-  if (SdLogger::logButtonPress(number)) {
-    showLoggedToSd();
-  } else {
-    showSdWriteError();
-  }
-
-  delay(250);
-  LEDs::off();
 }
