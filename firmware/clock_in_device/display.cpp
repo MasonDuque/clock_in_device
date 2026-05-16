@@ -152,7 +152,7 @@ void showAddProject() {
 
   if (gLastScreen != AppState::Screen::ADD_PROJECT) {
     lcd.setCursor(0, 3);
-    lcd.print("OK Add DEL Erase");
+    lcd.print("Add      Erase      ");
   }
 }
 
