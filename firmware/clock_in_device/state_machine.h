@@ -8,6 +8,9 @@ enum class Screen {
   MAIN_MENU,
   PROJECT_LIST,
   PROJECT_DETAIL,
+  ADD_PROJECT,
+  ADD_PROJECT_FEEDBACK,
+  ADD_PROJECT_ERROR,
   DELETE_PROJECT_LIST,
   DELETE_PROJECT_CONFIRM,
   DELETE_PROJECT_FEEDBACK,
@@ -20,7 +23,7 @@ enum class ClockState {
 };
 
 struct Project {
-  const char* name;
+  char name[13];
   uint32_t savedSeconds;
 };
 
@@ -38,6 +41,11 @@ ClockState currentClockState();
 uint32_t displayedProjectSeconds();
 const Project* projects();
 int projectCount();
+
+const char* addProjectDraftName();
+char addProjectSelectedChar();
+const char* addProjectFeedbackName();
+const char* addProjectErrorMessage();
 
 }  // namespace AppState
 

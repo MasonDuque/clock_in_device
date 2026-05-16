@@ -9,6 +9,10 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 namespace {
 AppState::Screen gLastScreen = static_cast<AppState::Screen>(-1);
 int gLastMenuIndex = -1;
+char gLastAddDraftRow[21] = "                    ";
+char gLastAddCharRow[21] = "                    ";
+const char* gLastAddErrorMessage = nullptr;
+const char* gLastAddFeedbackName = nullptr;
 int gLastProjectListSelected = -1;
 int gLastProjectListWindowStart = -1;
 int gLastDeleteListSelected = -1;
@@ -116,8 +120,58 @@ void showMainMenu() {
     lcd.setCursor(0, 1);
     lcd.print(currentIndex == 0 ? ">Continue Project" : " Continue Project");
     lcd.setCursor(0, 2);
-    lcd.print(currentIndex == 1 ? ">Delete Project" : " Delete Project");
+    lcd.print(currentIndex == 1 ? ">Add Project" : " Add Project");
+    lcd.setCursor(0, 3);
+    lcd.print(currentIndex == 2 ? ">Delete Project" : " Delete Project");
     gLastMenuIndex = currentIndex;
+  }
+}
+
+void showAddProject() {
+  const char* draft = AppState::addProjectDraftName();
+  const char selectedChar = AppState::addProjectSelectedChar();
+  if (gLastScreen != AppState::Screen::ADD_PROJECT) {
+    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+    lcd.setCursor(0, 0);
+    lcd.print("Project Name:");
+    memcpy(gLastAddDraftRow, "                    ", 21);
+    memcpy(gLastAddCharRow, "                    ", 21);
+  }
+
+  char draftRow[21];
+  snprintf(draftRow, sizeof(draftRow), "%-12s", draft);
+  char paddedDraftRow[21];
+  snprintf(paddedDraftRow, sizeof(paddedDraftRow), "%-20s", draftRow);
+  writeRowDiff(1, gLastAddDraftRow, paddedDraftRow);
+  memcpy(gLastAddDraftRow, paddedDraftRow, sizeof(gLastAddDraftRow));
+
+  char charRow[21];
+  snprintf(charRow, sizeof(charRow), "Char: %-1c            ", selectedChar);
+  writeRowDiff(2, gLastAddCharRow, charRow);
+  memcpy(gLastAddCharRow, charRow, sizeof(gLastAddCharRow));
+
+  if (gLastScreen != AppState::Screen::ADD_PROJECT) {
+    lcd.setCursor(0, 3);
+    lcd.print("OK Add DEL Erase");
+  }
+}
+
+void showAddProjectError() {
+  const char* message = AppState::addProjectErrorMessage();
+  if (gLastScreen != AppState::Screen::ADD_PROJECT_ERROR || gLastAddErrorMessage != message) {
+    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+    printCentered(1, String(message != nullptr ? message : "Error"));
+    gLastAddErrorMessage = message;
+  }
+}
+
+void showAddProjectFeedback() {
+  const char* name = AppState::addProjectFeedbackName();
+  if (gLastScreen != AppState::Screen::ADD_PROJECT_FEEDBACK || gLastAddFeedbackName != name) {
+    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+    printCentered(1, "Project Added");
+    printCentered(2, String(name != nullptr ? name : ""));
+    gLastAddFeedbackName = name;
   }
 }
 
@@ -359,6 +413,15 @@ void renderUi() {
       break;
     case AppState::Screen::PROJECT_DETAIL:
       showProjectDetail();
+      break;
+    case AppState::Screen::ADD_PROJECT:
+      showAddProject();
+      break;
+    case AppState::Screen::ADD_PROJECT_FEEDBACK:
+      showAddProjectFeedback();
+      break;
+    case AppState::Screen::ADD_PROJECT_ERROR:
+      showAddProjectError();
       break;
     case AppState::Screen::DELETE_PROJECT_LIST:
       showDeleteProjectList();
