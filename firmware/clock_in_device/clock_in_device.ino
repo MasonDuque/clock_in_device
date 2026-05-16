@@ -8,6 +8,7 @@
 #include "sd_logger.h"
 #include "state_machine.h"
 #include "wifi_manager.h"
+#include "web_dashboard.h"
 
 namespace {
 uint32_t gLastRenderMs = 0;
@@ -32,6 +33,7 @@ void setup() {
   WiFiManager::begin();
   const WiFiManager::Result wifiResult = WiFiManager::connectWithTimeout(9000);
   if (wifiResult.connected) {
+    WebDashboard::begin();
     const String ipAddress = wifiResult.ip.toString();
     showStartupStatus("WiFi Connected", ipAddress);
     Serial.print("WiFi IP: ");
@@ -49,6 +51,7 @@ void setup() {
 }
 
 void loop() {
+  WebDashboard::handleClient();
   for (int i = 0; i < Buttons::kCount; ++i) {
     const bool pressed = Buttons::isPressed(i);
     if (pressed && !gButtonLatched[i] &&
