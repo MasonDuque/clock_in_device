@@ -2,6 +2,8 @@
 
 #include <LiquidCrystal_I2C.h>
 
+#include <cstring>
+
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 namespace {
@@ -16,6 +18,8 @@ const char* gLastDeletedName = nullptr;
 int gLastDetailProjectIndex = -1;
 AppState::ClockState gLastDetailClockState = static_cast<AppState::ClockState>(-1);
 uint32_t gLastDetailSeconds = UINT32_MAX;
+String gLastDetailTimerText = "";
+char gLastDetailTimerRow[21] = "                    ";
 
 String formatCompact(uint32_t seconds) {
   uint32_t days = seconds / 86400;
@@ -44,6 +48,47 @@ String formatDetailed(uint32_t seconds) {
   char buf[21];
   snprintf(buf, sizeof(buf), "%luH %02luM %02luS", hours, minutes, secs);
   return String(buf);
+}
+
+
+
+void writeRowDiff(uint8_t row, const char* previous, const char* next) {
+  int start = -1;
+  for (int i = 0; i < 20; ++i) {
+    if (previous[i] != next[i]) {
+      if (start < 0) start = i;
+    } else if (start >= 0) {
+      char segment[21];
+      const int len = i - start;
+      memcpy(segment, &next[start], len);
+      segment[len] = '\0';
+      lcd.setCursor(start, row);
+      lcd.print(segment);
+      start = -1;
+    }
+  }
+
+  if (start >= 0) {
+    char segment[21];
+    const int len = 20 - start;
+    memcpy(segment, &next[start], len);
+    segment[len] = '\0';
+    lcd.setCursor(start, row);
+    lcd.print(segment);
+  }
+}
+
+void buildCenteredRow(const String& text, char* outRow) {
+  memset(outRow, ' ', 20);
+  outRow[20] = '\0';
+
+  const String trimmed = text.substring(0, 20);
+  int col = (20 - trimmed.length()) / 2;
+  if (col < 0) col = 0;
+
+  for (unsigned int i = 0; i < trimmed.length() && (col + (int)i) < 20; ++i) {
+    outRow[col + i] = trimmed[i];
+  }
 }
 
 void printCentered(uint8_t row, const String& text) {
@@ -148,6 +193,8 @@ void showProjectDetail() {
     gLastDetailProjectIndex = -1;
     gLastDetailClockState = static_cast<AppState::ClockState>(-1);
     gLastDetailSeconds = UINT32_MAX;
+    gLastDetailTimerText = "";
+    memcpy(gLastDetailTimerRow, "                    ", 21);
   }
 
   if (gLastDetailProjectIndex != projectIndex) {
@@ -157,8 +204,23 @@ void showProjectDetail() {
   }
 
   if (gLastDetailSeconds != seconds) {
-    clearRow(1);
-    printCentered(1, formatDetailed(seconds));
+    const String timerText = formatDetailed(seconds);
+    char nextTimerRow[21];
+    buildCenteredRow(timerText, nextTimerRow);
+
+    if (gLastDetailTimerText.length() != timerText.length()) {
+      int oldCol = (20 - gLastDetailTimerText.length()) / 2;
+      if (oldCol < 0) oldCol = 0;
+      lcd.setCursor(oldCol, 1);
+      for (unsigned int i = 0; i < gLastDetailTimerText.length() && (oldCol + (int)i) < 20; ++i) {
+        lcd.print(' ');
+      }
+    }
+
+    writeRowDiff(1, gLastDetailTimerRow, nextTimerRow);
+
+    memcpy(gLastDetailTimerRow, nextTimerRow, sizeof(gLastDetailTimerRow));
+    gLastDetailTimerText = timerText;
     gLastDetailSeconds = seconds;
   }
 
