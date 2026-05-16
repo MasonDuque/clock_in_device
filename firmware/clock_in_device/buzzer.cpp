@@ -9,7 +9,7 @@ void begin() { pinMode(Pins::kBuzzer, OUTPUT); }
 
 void startupChirp() { tone(Pins::kBuzzer, 1200, 100); }
 
-void playEvenTone() { tone(Pins::kBuzzer, 1200, 80); }
+void playClockInTone() { tone(Pins::kBuzzer, 1400, 80); }
 
-void playOddTone() { tone(Pins::kBuzzer, 800, 80); }
+void playClockOutTone() { tone(Pins::kBuzzer, 750, 120); }
 }  // namespace Buzzer
