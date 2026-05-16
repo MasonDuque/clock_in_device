@@ -8,7 +8,10 @@ enum class Screen {
   MAIN_MENU,
   PROJECT_LIST,
   PROJECT_DETAIL,
-  DELETE_PLACEHOLDER,
+  DELETE_PROJECT_LIST,
+  DELETE_PROJECT_CONFIRM,
+  DELETE_PROJECT_FEEDBACK,
+  DELETE_PROJECT_EMPTY,
 };
 
 enum class ClockState {
@@ -28,6 +31,9 @@ void update();
 Screen currentScreen();
 int currentMenuIndex();
 int selectedProjectIndex();
+int selectedDeleteProjectIndex();
+int pendingDeleteProjectIndex();
+const char* lastDeletedProjectName();
 ClockState currentClockState();
 uint32_t displayedProjectSeconds();
 const Project* projects();

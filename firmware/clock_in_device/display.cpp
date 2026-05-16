@@ -8,6 +8,7 @@ namespace {
 AppState::Screen gLastScreen = static_cast<AppState::Screen>(-1);
 int gLastMenuIndex = -1;
 int gLastProjectListSelected = -1;
+int gLastDeleteListSelected = -1;
 int gLastDetailProjectIndex = -1;
 AppState::ClockState gLastDetailClockState = static_cast<AppState::ClockState>(-1);
 uint32_t gLastDetailSeconds = UINT32_MAX;
@@ -79,6 +80,13 @@ void showProjectList() {
   }
 
   const AppState::Project* projects = AppState::projects();
+  if (AppState::projectCount() == 0) {
+    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+    printCentered(1, "No Projects");
+    printCentered(3, "BACK=Menu");
+    gLastProjectListSelected = selected;
+    return;
+  }
   if (gLastScreen != AppState::Screen::PROJECT_LIST ||
       gLastProjectListSelected != selected) {
     for (int row = 0; row < AppState::projectCount() && row < 4; ++row) {
@@ -128,10 +136,52 @@ void showProjectDetail() {
   }
 }
 
-void showDeletePlaceholder() {
+void showDeleteProjectList() {
+  const int selected = AppState::selectedDeleteProjectIndex();
+  if (gLastScreen != AppState::Screen::DELETE_PROJECT_LIST ||
+      gLastDeleteListSelected != selected) {
+    clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+    lcd.setCursor(0, 0);
+    lcd.print("Delete Project");
+    const AppState::Project* projects = AppState::projects();
+    const int visibleRows = min(AppState::projectCount(), 3);
+    for (int row = 0; row < visibleRows; ++row) {
+      String left = String(projects[row].name);
+      String right = formatCompact(projects[row].savedSeconds);
+      char line[21];
+      snprintf(line, sizeof(line), "%c%-9s%10s", row == selected ? '>' : ' ',
+               left.c_str(), right.c_str());
+      lcd.setCursor(0, row + 1);
+      lcd.print(line);
+    }
+    gLastDeleteListSelected = selected;
+  }
+}
+
+void showDeleteProjectConfirm() {
   clearRow(0); clearRow(1); clearRow(2); clearRow(3);
-  printCentered(1, "Delete not ready");
-  printCentered(3, "Press Back");
+  lcd.setCursor(0, 0);
+  lcd.print("Delete Project?");
+  const int pendingIdx = AppState::pendingDeleteProjectIndex();
+  if (pendingIdx >= 0 && pendingIdx < AppState::projectCount()) {
+    printCentered(1, String(AppState::projects()[pendingIdx].name));
+  }
+  printCentered(3, "OK=Yes BACK=No");
+}
+
+void showDeleteProjectFeedback() {
+  clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+  printCentered(0, "Project Deleted");
+  const char* deleted = AppState::lastDeletedProjectName();
+  if (deleted != nullptr) {
+    printCentered(1, String(deleted));
+  }
+}
+
+void showDeleteProjectEmpty() {
+  clearRow(0); clearRow(1); clearRow(2); clearRow(3);
+  printCentered(1, "No Projects");
+  printCentered(3, "BACK=Menu");
 }
 
 }  // namespace
@@ -159,8 +209,17 @@ void renderUi() {
     case AppState::Screen::PROJECT_DETAIL:
       showProjectDetail();
       break;
-    case AppState::Screen::DELETE_PLACEHOLDER:
-      showDeletePlaceholder();
+    case AppState::Screen::DELETE_PROJECT_LIST:
+      showDeleteProjectList();
+      break;
+    case AppState::Screen::DELETE_PROJECT_CONFIRM:
+      showDeleteProjectConfirm();
+      break;
+    case AppState::Screen::DELETE_PROJECT_FEEDBACK:
+      showDeleteProjectFeedback();
+      break;
+    case AppState::Screen::DELETE_PROJECT_EMPTY:
+      showDeleteProjectEmpty();
       break;
   }
 
